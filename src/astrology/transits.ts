@@ -1,5 +1,4 @@
 import { DateTime } from 'luxon';
-import { find as findTimeZone } from 'geo-tz';
 import type {
   CalculationRequest,
   InterChartAspect,
@@ -8,7 +7,7 @@ import type {
 } from '../types.js';
 import { DEFAULT_ORBS } from '../types.js';
 import { calculateNatalChart } from './calculator.js';
-import { isLongitudeInHouse } from './utils.js';
+import { getPureTimezoneOffset, isLongitudeInHouse } from './utils.js';
 
 // Standard aspect angles & symbols
 const ASPECT_DEFINITIONS = [
@@ -27,21 +26,13 @@ export function calculateTransits(request: TransitRequest): TransitResponse {
   const natalChart = calculateNatalChart(request.natalRequest);
 
   // 2. Resolve Transit Date/Time
-  const dateStr = request.transitDateStr || DateTime.now().toISODate() || '2026-07-27';
+  const dateStr = request.transitDateStr || new Date().toISOString().split('T')[0] || '2026-07-27';
   const timeStr = request.transitTimeStr || '12:00';
 
   const lat = request.transitLatitude ?? request.natalRequest.latitude;
   const lng = request.transitLongitude ?? request.natalRequest.longitude;
 
-  let ianaZone = 'UTC';
-  try {
-    const tzList = findTimeZone(lat, lng);
-    if (tzList && tzList.length > 0) {
-      ianaZone = tzList[0];
-    }
-  } catch (e) {
-    ianaZone = 'UTC';
-  }
+  const { ianaZone } = getPureTimezoneOffset(lat, lng, dateStr, timeStr);
 
   const localDt = DateTime.fromISO(`${dateStr}T${timeStr}:00`, { zone: ianaZone });
   const utcDt = localDt.isValid ? localDt.toUTC() : DateTime.now().toUTC();

@@ -1,5 +1,3 @@
-import { find as findTimeZone } from 'geo-tz';
-import { DateTime } from 'luxon';
 import type {
   AngleData,
   CalculationRequest,
@@ -13,7 +11,7 @@ import { DEFAULT_ORBS, HOUSE_SYSTEMS } from '../types.js';
 import { calculateAspects } from './aspects.js';
 import { CELESTIAL_BODIES_LIST, calculateAllCelestialBodies, getAstronomy } from './engine.js';
 import { PlacidusPolarError, calculateAngles, calculateHouseCusps } from './houses.js';
-import { degToDMS, isLongitudeInHouse, normalize360 } from './utils.js';
+import { degToDMS, getPureTimezoneOffset, isLongitudeInHouse, normalize360 } from './utils.js';
 import { runAutomatedValidations } from './validation.js';
 
 export function calculateNatalChart(request: CalculationRequest): CalculationResponse {
@@ -33,28 +31,8 @@ export function calculateNatalChart(request: CalculationRequest): CalculationRes
   const lat = Math.max(-90, Math.min(90, latitude));
   const lng = Math.max(-180, Math.min(180, longitude));
 
-  // 3. Resolve historical IANA timezone
-  let ianaZone = 'UTC';
-  try {
-    const tzList = findTimeZone(lat, lng);
-    if (tzList && tzList.length > 0) {
-      ianaZone = tzList[0];
-    }
-  } catch (e) {
-    console.warn('Fallback to UTC for timezone lookup:', e);
-    ianaZone = 'UTC';
-  }
-
-  // 4. Convert local time to UTC
-  const localDt = DateTime.fromISO(`${dateStr}T${timeStr}:00`, { zone: ianaZone });
-  const utcDt = localDt.toUTC();
-  const utcJSDate = utcDt.toJSDate();
-
-  // Offset format e.g. UTC-3 or UTC+02:00
-  const offsetMinutes = localDt.offset;
-  const offsetHours = Math.abs(offsetMinutes) / 60;
-  const offsetSign = offsetMinutes >= 0 ? '+' : '-';
-  const utcOffset = `UTC${offsetSign}${Math.floor(offsetHours).toString().padStart(2, '0')}:${(Math.abs(offsetMinutes) % 60).toString().padStart(2, '0')}`;
+  // 3 & 4. Pure math timezone offset calculation
+  const { utcJSDate, utcOffset, ianaZone } = getPureTimezoneOffset(lat, lng, dateStr, timeStr);
 
   // 5. Calculate Julian Day UT
   const timeObj = Astronomy.MakeTime(utcJSDate);
@@ -197,7 +175,7 @@ export function calculateNatalChart(request: CalculationRequest): CalculationRes
     ianaZone,
     localTime: `${dateStr} ${timeStr}`,
     utcOffset,
-    utcTime: utcDt.toFormat('yyyy-MM-dd HH:mm:ss') + ' UTC',
+    utcTime: utcJSDate.toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
     julianDayUT,
     houseSystem,
     houseSystemLabel: houseSystemObj.name,

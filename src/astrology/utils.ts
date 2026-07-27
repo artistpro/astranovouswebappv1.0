@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type { ZodiacSign } from '../types.js';
 import { ZODIAC_SIGNS } from '../types.js';
 
@@ -99,4 +100,38 @@ export function isLongitudeInHouse(lon: number, cuspStart: number, cuspEnd: numb
 export function angularDistance(lon1: number, lon2: number): number {
   const diff = Math.abs(normalize360(lon1) - normalize360(lon2));
   return diff > 180 ? 360 - diff : diff;
+}
+
+/**
+ * Computes pure-math estimated timezone / UTC offset from coordinates and date.
+ * Uses fixed UTC offset (15° longitude = 1 hour) without heavy binary data files (like geo-tz)
+ * to guarantee 100% serverless compatibility on platforms like Vercel.
+ */
+export function getPureTimezoneOffset(
+  lat: number,
+  lng: number,
+  dateStr: string,
+  timeStr: string
+): { utcJSDate: Date; utcOffset: string; ianaZone: string } {
+  // Approximate UTC offset in hours based on longitude (15 deg = 1 hour)
+  const approxOffsetHours = Math.round(lng / 15.0);
+  const sign = approxOffsetHours >= 0 ? '+' : '-';
+  const absHours = Math.abs(approxOffsetHours);
+  const offsetString = `UTC${sign}${absHours.toString().padStart(2, '0')}:00`;
+  const zoneName = `UTC${sign}${absHours}`;
+
+  const isoString = `${dateStr}T${timeStr}:00`;
+  let localDt = DateTime.fromISO(isoString, { zone: zoneName });
+  if (!localDt.isValid) {
+    localDt = DateTime.fromISO(isoString, { zone: 'UTC' });
+  }
+
+  const utcDt = localDt.toUTC();
+  const utcJSDate = utcDt.toJSDate();
+
+  return {
+    utcJSDate,
+    utcOffset: offsetString,
+    ianaZone: `Etc/GMT${approxOffsetHours > 0 ? '-' : '+'}${absHours}`,
+  };
 }
