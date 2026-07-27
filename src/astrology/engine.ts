@@ -1,6 +1,6 @@
 import * as AstronomyImport from 'astronomy-engine';
-import { CelestialBodyKey, MotionState } from '../types';
-import { normalize360 } from './utils';
+import type { CelestialBodyKey, MotionState } from '../types.js';
+import { normalize360 } from './utils.js';
 
 export function getAstronomy(): typeof AstronomyImport {
   const a: any = AstronomyImport;

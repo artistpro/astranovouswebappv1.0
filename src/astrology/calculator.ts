@@ -1,21 +1,20 @@
 import { find as findTimeZone } from 'geo-tz';
 import { DateTime } from 'luxon';
-import {
+import type {
   AngleData,
   CalculationRequest,
   CalculationResponse,
   CelestialBodyKey,
-  DEFAULT_ORBS,
-  HOUSE_SYSTEMS,
   HouseCusp,
   NormalizedData,
   PlanetPosition,
-} from '../types';
-import { calculateAspects } from './aspects';
-import { CELESTIAL_BODIES_LIST, calculateAllCelestialBodies, getAstronomy } from './engine';
-import { PlacidusPolarError, calculateAngles, calculateHouseCusps } from './houses';
-import { degToDMS, isLongitudeInHouse, normalize360 } from './utils';
-import { runAutomatedValidations } from './validation';
+} from '../types.js';
+import { DEFAULT_ORBS, HOUSE_SYSTEMS } from '../types.js';
+import { calculateAspects } from './aspects.js';
+import { CELESTIAL_BODIES_LIST, calculateAllCelestialBodies, getAstronomy } from './engine.js';
+import { PlacidusPolarError, calculateAngles, calculateHouseCusps } from './houses.js';
+import { degToDMS, isLongitudeInHouse, normalize360 } from './utils.js';
+import { runAutomatedValidations } from './validation.js';
 
 export function calculateNatalChart(request: CalculationRequest): CalculationResponse {
   const Astronomy = getAstronomy();

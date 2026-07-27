@@ -1,12 +1,12 @@
-import {
+import type {
   AngleData,
   AspectResult,
   HouseCusp,
   PlanetPosition,
   ValidationCheck,
   ValidationResult,
-} from '../types';
-import { angularDistance, getZodiacSign, normalize360 } from './utils';
+} from '../types.js';
+import { angularDistance, getZodiacSign, normalize360 } from './utils.js';
 
 export function runAutomatedValidations(
   planets: PlanetPosition[],

@@ -1,12 +1,12 @@
-import {
-  ASPECT_DEFINITIONS,
+import type {
   AspectResult,
   AspectType,
   CelestialBodyKey,
   OrbsConfig,
   PlanetPosition,
-} from '../types';
-import { angularDistance, normalize360 } from './utils';
+} from '../types.js';
+import { ASPECT_DEFINITIONS } from '../types.js';
+import { angularDistance, normalize360 } from './utils.js';
 
 export function calculateAspects(
   planets: PlanetPosition[],

@@ -1,14 +1,14 @@
 import { DateTime } from 'luxon';
 import { find as findTimeZone } from 'geo-tz';
-import {
+import type {
   CalculationRequest,
-  DEFAULT_ORBS,
   InterChartAspect,
   TransitRequest,
   TransitResponse,
-} from '../types';
-import { calculateNatalChart } from './calculator';
-import { isLongitudeInHouse } from './utils';
+} from '../types.js';
+import { DEFAULT_ORBS } from '../types.js';
+import { calculateNatalChart } from './calculator.js';
+import { isLongitudeInHouse } from './utils.js';
 
 // Standard aspect angles & symbols
 const ASPECT_DEFINITIONS = [

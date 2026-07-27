@@ -1,6 +1,6 @@
-import { HouseSystem } from '../types';
-import { normalize360 } from './utils';
-import { getAstronomy } from './engine';
+import type { HouseSystem } from '../types.js';
+import { normalize360 } from './utils.js';
+import { getAstronomy } from './engine.js';
 
 export interface AnglesResult {
   ascendant: number;

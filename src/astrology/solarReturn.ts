@@ -1,13 +1,13 @@
 import { DateTime } from 'luxon';
-import {
+import type {
   CalculationRequest,
   InterChartAspect,
   SolarReturnRequest,
   SolarReturnResponse,
-} from '../types';
-import { calculateNatalChart } from './calculator';
-import { isLongitudeInHouse } from './utils';
-import { getAstronomy } from './engine';
+} from '../types.js';
+import { calculateNatalChart } from './calculator.js';
+import { isLongitudeInHouse } from './utils.js';
+import { getAstronomy } from './engine.js';
 
 /**
  * Calculates the exact Sun ecliptic longitude at any JS Date.
