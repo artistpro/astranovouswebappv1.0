@@ -1,27 +1,32 @@
 import * as AstronomyImport from 'astronomy-engine';
-import { CelestialBodyKey, MotionState, PlanetPosition } from '../types';
-import { degToDMS, normalize360 } from './utils';
+import { CelestialBodyKey, MotionState } from '../types';
+import { normalize360 } from './utils';
 
-const Astronomy: typeof AstronomyImport = (AstronomyImport as any).default?.Body ? (AstronomyImport as any).default : AstronomyImport;
+export function getAstronomy(): typeof AstronomyImport {
+  const a: any = AstronomyImport;
+  if (a && a.Body && a.GeoVector) return a;
+  if (a && a.default && a.default.Body) return a.default;
+  return a;
+}
 
 export interface BodyDefinition {
   key: CelestialBodyKey;
   name: string;
   symbol: string;
-  astronomyBody?: AstronomyImport.Body;
+  bodyName?: string;
 }
 
 export const CELESTIAL_BODIES_LIST: BodyDefinition[] = [
-  { key: 'sun', name: 'Sol', symbol: '☉', astronomyBody: Astronomy.Body.Sun },
-  { key: 'moon', name: 'Luna', symbol: '☽', astronomyBody: Astronomy.Body.Moon },
-  { key: 'mercury', name: 'Mercurio', symbol: '☿', astronomyBody: Astronomy.Body.Mercury },
-  { key: 'venus', name: 'Venus', symbol: '♀', astronomyBody: Astronomy.Body.Venus },
-  { key: 'mars', name: 'Marte', symbol: '♂', astronomyBody: Astronomy.Body.Mars },
-  { key: 'jupiter', name: 'Júpiter', symbol: '♃', astronomyBody: Astronomy.Body.Jupiter },
-  { key: 'saturn', name: 'Saturno', symbol: '♄', astronomyBody: Astronomy.Body.Saturn },
-  { key: 'uranus', name: 'Urano', symbol: '♅', astronomyBody: Astronomy.Body.Uranus },
-  { key: 'neptune', name: 'Neptuno', symbol: '♆', astronomyBody: Astronomy.Body.Neptune },
-  { key: 'pluto', name: 'Plutón', symbol: '♇', astronomyBody: Astronomy.Body.Pluto },
+  { key: 'sun', name: 'Sol', symbol: '☉', bodyName: 'Sun' },
+  { key: 'moon', name: 'Luna', symbol: '☽', bodyName: 'Moon' },
+  { key: 'mercury', name: 'Mercurio', symbol: '☿', bodyName: 'Mercury' },
+  { key: 'venus', name: 'Venus', symbol: '♀', bodyName: 'Venus' },
+  { key: 'mars', name: 'Marte', symbol: '♂', bodyName: 'Mars' },
+  { key: 'jupiter', name: 'Júpiter', symbol: '♃', bodyName: 'Jupiter' },
+  { key: 'saturn', name: 'Saturno', symbol: '♄', bodyName: 'Saturn' },
+  { key: 'uranus', name: 'Urano', symbol: '♅', bodyName: 'Uranus' },
+  { key: 'neptune', name: 'Neptuno', symbol: '♆', bodyName: 'Neptune' },
+  { key: 'pluto', name: 'Plutón', symbol: '♇', bodyName: 'Pluto' },
   { key: 'north_node', name: 'Nodo Norte verdadero', symbol: '☊' },
   { key: 'south_node', name: 'Nodo Sur', symbol: '☋' },
 ];
@@ -30,6 +35,7 @@ export const CELESTIAL_BODIES_LIST: BodyDefinition[] = [
  * Calculates high-accuracy True Lunar Node ecliptic longitude.
  */
 function getTrueNorthNodeLongitude(date: Date): { longitude: number; speed: number } {
+  const Astronomy = getAstronomy();
   const time = Astronomy.MakeTime(date);
   const T = (time.ut - 2451545.0) / 36525.0;
 
@@ -83,6 +89,7 @@ function getTrueNorthNodeLongitude(date: Date): { longitude: number; speed: numb
  * Calculates longitude and speed in degrees/day for a standard celestial body.
  */
 function getBodyLongitudeAndSpeed(body: AstronomyImport.Body, date: Date): { longitude: number; speed: number } {
+  const Astronomy = getAstronomy();
   // Primary position at date
   const geoVec0 = Astronomy.GeoVector(body, date, true);
   const ecl0 = Astronomy.Ecliptic(geoVec0);
@@ -107,12 +114,14 @@ function getBodyLongitudeAndSpeed(body: AstronomyImport.Body, date: Date): { lon
  * Computes planetary positions for all 12 celestial bodies.
  */
 export function calculateAllCelestialBodies(utcDate: Date): Map<CelestialBodyKey, { longitude: number; speed: number; motion: MotionState }> {
+  const Astronomy = getAstronomy();
   const result = new Map<CelestialBodyKey, { longitude: number; speed: number; motion: MotionState }>();
 
   // 1. Standard planets
   for (const item of CELESTIAL_BODIES_LIST) {
-    if (item.astronomyBody !== undefined) {
-      const { longitude, speed } = getBodyLongitudeAndSpeed(item.astronomyBody, utcDate);
+    if (item.bodyName && (Astronomy.Body as any)[item.bodyName] !== undefined) {
+      const astroBody = (Astronomy.Body as any)[item.bodyName];
+      const { longitude, speed } = getBodyLongitudeAndSpeed(astroBody, utcDate);
       let motion: MotionState = 'Directo';
       if (speed < -0.0001) {
         motion = 'Retrógrado';
@@ -125,7 +134,7 @@ export function calculateAllCelestialBodies(utcDate: Date): Map<CelestialBodyKey
 
   // 2. True North Node
   const northNodeData = getTrueNorthNodeLongitude(utcDate);
-  let northNodeMotion: MotionState = 'Retrógrado'; // Nodes naturally move retrograde
+  let northNodeMotion: MotionState = 'Retrógrado';
   if (northNodeData.speed > 0.0001) {
     northNodeMotion = 'Directo';
   } else if (Math.abs(northNodeData.speed) < 0.005) {
@@ -141,7 +150,7 @@ export function calculateAllCelestialBodies(utcDate: Date): Map<CelestialBodyKey
   const southNodeLon = normalize360(northNodeData.longitude + 180);
   result.set('south_node', {
     longitude: southNodeLon,
-    speed: northNodeData.speed, // same magnitude / direction
+    speed: northNodeData.speed,
     motion: northNodeMotion,
   });
 

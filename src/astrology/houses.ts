@@ -1,7 +1,6 @@
-import * as AstronomyImport from 'astronomy-engine';
-const Astronomy: typeof AstronomyImport = (AstronomyImport as any).default?.Body ? (AstronomyImport as any).default : AstronomyImport;
 import { HouseSystem } from '../types';
 import { normalize360 } from './utils';
+import { getAstronomy } from './engine';
 
 export interface AnglesResult {
   ascendant: number;
@@ -24,6 +23,7 @@ export class PlacidusPolarError extends Error {
  * for a given UTC Date and geographic coordinates.
  */
 export function calculateAngles(utcDate: Date, lat: number, lng: number): AnglesResult {
+  const Astronomy = getAstronomy();
   const time = Astronomy.MakeTime(utcDate);
 
   // 1. Obliquity of ecliptic (eps)

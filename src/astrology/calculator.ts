@@ -1,5 +1,3 @@
-import * as AstronomyImport from 'astronomy-engine';
-const Astronomy: typeof AstronomyImport = (AstronomyImport as any).default?.Body ? (AstronomyImport as any).default : AstronomyImport;
 import { find as findTimeZone } from 'geo-tz';
 import { DateTime } from 'luxon';
 import {
@@ -14,12 +12,13 @@ import {
   PlanetPosition,
 } from '../types';
 import { calculateAspects } from './aspects';
-import { CELESTIAL_BODIES_LIST, calculateAllCelestialBodies } from './engine';
+import { CELESTIAL_BODIES_LIST, calculateAllCelestialBodies, getAstronomy } from './engine';
 import { PlacidusPolarError, calculateAngles, calculateHouseCusps } from './houses';
 import { degToDMS, isLongitudeInHouse, normalize360 } from './utils';
 import { runAutomatedValidations } from './validation';
 
 export function calculateNatalChart(request: CalculationRequest): CalculationResponse {
+  const Astronomy = getAstronomy();
   const {
     name,
     dateStr,

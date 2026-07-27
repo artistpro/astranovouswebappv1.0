@@ -1,5 +1,3 @@
-import * as AstronomyImport from 'astronomy-engine';
-const Astronomy: typeof AstronomyImport = (AstronomyImport as any).default?.Body ? (AstronomyImport as any).default : AstronomyImport;
 import { DateTime } from 'luxon';
 import {
   CalculationRequest,
@@ -9,11 +7,13 @@ import {
 } from '../types';
 import { calculateNatalChart } from './calculator';
 import { isLongitudeInHouse } from './utils';
+import { getAstronomy } from './engine';
 
 /**
  * Calculates the exact Sun ecliptic longitude at any JS Date.
  */
 function getSunLongitude(date: Date): number {
+  const Astronomy = getAstronomy();
   const geoVec = Astronomy.GeoVector(Astronomy.Body.Sun, date, true);
   const ecl = Astronomy.Ecliptic(geoVec);
   return ecl.elon;
