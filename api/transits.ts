@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { calculateTransits } from '../src/astrology/transits';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,6 +13,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     if (!payload?.natalRequest) {
       return res.status(400).json({ error: 'Falta natalRequest' });
     }
+    const { calculateTransits } = await import('../src/astrology/transits.js');
     const result = calculateTransits(payload);
     return res.status(200).json(result);
   } catch (err: any) {
@@ -21,7 +21,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({
       error: 'Error en tránsitos.',
       details: err?.message || String(err),
-      stack: err?.stack?.split('\n').slice(0, 5),
+      stack: err?.stack?.split('\n').slice(0, 8),
     });
   }
 }
