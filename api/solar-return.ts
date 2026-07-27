@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { calculateSolarReturn } from '../src/astrology/solarReturn.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -13,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!payload?.natalRequest || !payload?.targetYear) {
       return res.status(400).json({ error: 'Faltan natalRequest y targetYear' });
     }
-    const { calculateSolarReturn } = await import('../src/astrology/solarReturn.js');
+
     const result = calculateSolarReturn(payload);
     return res.status(200).json(result);
   } catch (err: any) {
@@ -21,7 +22,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({
       error: 'Error en Revolución Solar.',
       details: err?.message || String(err),
-      stack: err?.stack?.split('\n').slice(0, 8),
     });
   }
 }
