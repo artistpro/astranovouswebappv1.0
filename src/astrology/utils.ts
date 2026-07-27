@@ -1,4 +1,5 @@
-import { ZODIAC_SIGNS, ZodiacSign } from '../types';
+import type { ZodiacSign } from '../types.js';
+import { ZODIAC_SIGNS } from '../types.js';
 
 /**
  * Normalizes an angle in degrees to the range [0, 360).
