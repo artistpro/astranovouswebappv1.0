@@ -1,5 +1,9 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" }
+    { "source": "/api/calculate", "destination": "/api/calculate" },
+    { "source": "/api/transits", "destination": "/api/transits" },
+    { "source": "/api/solar-return", "destination": "/api/solar-return" },
+    { "source": "/api/geocode", "destination": "/api/geocode" },
+    { "source": "/api/health", "destination": "/api/health" }
   ]
 }
