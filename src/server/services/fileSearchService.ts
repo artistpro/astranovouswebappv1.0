@@ -25,19 +25,23 @@ export interface DocumentMeta {
 }
 
 export class FileSearchService {
-  private docsDir = path.join(process.cwd(), 'knowledge_docs');
-  private catalogFile = path.join(this.docsDir, 'catalog.json');
+  private docsDir = process.env.VERCEL ? path.join('/tmp', 'knowledge_docs') : path.join(process.cwd(), 'knowledge_docs');
+  private catalogFile = process.env.VERCEL ? path.join('/tmp', 'knowledge_docs', 'catalog.json') : path.join(process.cwd(), 'knowledge_docs', 'catalog.json');
 
   constructor() {
     this.ensureDirectory();
   }
 
   private ensureDirectory() {
-    if (!fs.existsSync(this.docsDir)) {
-      fs.mkdirSync(this.docsDir, { recursive: true });
-    }
-    if (!fs.existsSync(this.catalogFile)) {
-      fs.writeFileSync(this.catalogFile, JSON.stringify([], null, 2), 'utf-8');
+    try {
+      if (!fs.existsSync(this.docsDir)) {
+        fs.mkdirSync(this.docsDir, { recursive: true });
+      }
+      if (!fs.existsSync(this.catalogFile)) {
+        fs.writeFileSync(this.catalogFile, JSON.stringify([], null, 2), 'utf-8');
+      }
+    } catch (err) {
+      console.warn('[FileSearchService] Warning: Could not create knowledge_docs directory (read-only filesystem):', err);
     }
   }
 

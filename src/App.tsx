@@ -88,8 +88,10 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.details || errData.error || 'Error al comunicarse con el motor astrológico.');
+        const text = await response.text().catch(() => '');
+        let errData: any = {};
+        try { errData = JSON.parse(text); } catch {}
+        throw new Error(errData.details || errData.error || text || `Error HTTP ${response.status} al comunicarse con el motor astrológico.`);
       }
 
       const data: CalculationResponse = await response.json();
