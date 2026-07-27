@@ -1,156 +1,155 @@
-import express from 'express';
-import { calculateNatalChart } from '../src/astrology/calculator';
-import { calculateTransits } from '../src/astrology/transits';
-import { calculateSolarReturn } from '../src/astrology/solarReturn';
-import { CalculationRequest, AnalysisRequest, TransitRequest, SolarReturnRequest } from '../src/types';
-import { interpretationService } from '../src/server/services/interpretationService';
-import { fullProfileService } from '../src/server/services/fullProfileService';
-import { fileSearchService } from '../src/server/services/fileSearchService';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const app = express();
-app.use(express.json());
+// ─────────────────────────────────────────────
+// Minimal Vercel Serverless handler for all /api/* routes
+// Only pure-math astronomy endpoints are included here.
+// AI/knowledge services are NOT imported to avoid startup crashes.
+// ─────────────────────────────────────────────
 
-// 1. Health check API
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', engine: 'Astronomy Engine + Swiss Ephemeris House Layer (Vercel Serverless)' });
-});
+let calculateNatalChart: any = null;
+let calculateTransits: any = null;
+let calculateSolarReturn: any = null;
+let loadError: string | null = null;
 
-// 2. Natal Chart calculation endpoint
-app.post('/api/calculate', (req, res) => {
-  try {
-    const payload = req.body as CalculationRequest;
-    if (!payload.dateStr || !payload.timeStr) {
-      return res.status(400).json({ error: 'Faltan parámetros requeridos: dateStr y timeStr' });
-    }
-    const result = calculateNatalChart(payload);
-    return res.json(result);
-  } catch (err: any) {
-    console.error('API calculate error:', err);
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const calc = require('../src/astrology/calculator');
+  calculateNatalChart = calc.calculateNatalChart;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const transits = require('../src/astrology/transits');
+  calculateTransits = transits.calculateTransits;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const sr = require('../src/astrology/solarReturn');
+  calculateSolarReturn = sr.calculateSolarReturn;
+} catch (err: any) {
+  loadError = err?.message || String(err);
+  console.error('[api/index] FATAL module load error:', err);
+}
+
+function setJsonHeaders(res: VercelResponse) {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  setJsonHeaders(res);
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const url = req.url || '';
+
+  // Strip query string for route matching
+  const pathname = url.split('?')[0];
+
+  // ── Health check ──────────────────────────────
+  if (pathname === '/api/health' || pathname === '/api') {
+    return res.status(200).json({
+      status: loadError ? 'error' : 'ok',
+      engine: 'AstraNovous v1.0 – Astronomy Engine + VSOP87',
+      loadError: loadError || undefined,
+    });
+  }
+
+  // ── Module load guard ─────────────────────────
+  if (loadError) {
     return res.status(500).json({
-      error: 'Error interno en la ejecución del cálculo astrológico.',
-      details: err?.message || String(err),
+      error: 'El motor astrológico no pudo iniciarse.',
+      details: loadError,
     });
   }
-});
 
-// 2.b Transits calculation endpoint
-app.post('/api/transits', (req, res) => {
-  try {
-    const payload = req.body as TransitRequest;
-    if (!payload.natalRequest) {
-      return res.status(400).json({ error: 'Falta la propiedad natalRequest' });
+  // ── POST /api/calculate ───────────────────────
+  if (pathname === '/api/calculate' && req.method === 'POST') {
+    try {
+      const payload = req.body;
+      if (!payload?.dateStr || !payload?.timeStr) {
+        return res.status(400).json({ error: 'Faltan parámetros: dateStr y timeStr' });
+      }
+      const result = calculateNatalChart(payload);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      console.error('[/api/calculate] error:', err);
+      return res.status(500).json({ error: 'Error en cálculo natal.', details: err?.message || String(err) });
     }
-    const result = calculateTransits(payload);
-    return res.json(result);
-  } catch (err: any) {
-    console.error('API transits error:', err);
-    return res.status(500).json({
-      error: 'Error interno en el cálculo de tránsitos.',
-      details: err?.message || String(err),
-    });
   }
-});
 
-// 2.c Solar Return calculation endpoint
-app.post('/api/solar-return', (req, res) => {
-  try {
-    const payload = req.body as SolarReturnRequest;
-    if (!payload.natalRequest || !payload.targetYear) {
-      return res.status(400).json({ error: 'Faltan parámetros requeridos: natalRequest y targetYear' });
+  // ── POST /api/transits ────────────────────────
+  if (pathname === '/api/transits' && req.method === 'POST') {
+    try {
+      const payload = req.body;
+      if (!payload?.natalRequest) {
+        return res.status(400).json({ error: 'Falta natalRequest' });
+      }
+      const result = calculateTransits(payload);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      console.error('[/api/transits] error:', err);
+      return res.status(500).json({ error: 'Error en tránsitos.', details: err?.message || String(err) });
     }
-    const result = calculateSolarReturn(payload);
-    return res.json(result);
-  } catch (err: any) {
-    console.error('API solar-return error:', err);
-    return res.status(500).json({
-      error: 'Error interno en el cálculo de Revolución Solar.',
-      details: err?.message || String(err),
-    });
-  }
-});
-
-// 3. Geocoding endpoint using OpenStreetMap Nominatim
-app.get('/api/geocode', async (req, res) => {
-  const query = req.query.q as string;
-  if (!query) {
-    return res.status(400).json({ error: 'Parámetro query "q" es requerido.' });
   }
 
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'CalculadoraAstrologicaApp/1.0',
-      },
-    });
-
-    if (!response.ok) {
-      return res.status(500).json({ error: 'Error al contactar el servicio de geocodificación.' });
+  // ── POST /api/solar-return ────────────────────
+  if (pathname === '/api/solar-return' && req.method === 'POST') {
+    try {
+      const payload = req.body;
+      if (!payload?.natalRequest || !payload?.targetYear) {
+        return res.status(400).json({ error: 'Faltan natalRequest y targetYear' });
+      }
+      const result = calculateSolarReturn(payload);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      console.error('[/api/solar-return] error:', err);
+      return res.status(500).json({ error: 'Error en Revolución Solar.', details: err?.message || String(err) });
     }
-
-    const data = await response.json();
-    const results = data.map((item: any) => ({
-      name: item.display_name,
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-    }));
-
-    return res.json(results);
-  } catch (err: any) {
-    console.error('Geocode error:', err);
-    return res.status(500).json({ error: 'Excepción al buscar ubicación.' });
   }
-});
 
-// 4. Documental Interpretation Analysis Endpoint
-app.post('/api/interpretations/analyze', async (req, res) => {
-  try {
-    const payload = req.body as AnalysisRequest;
-    if (!payload || !payload.selection) {
-      return res.status(400).json({ error: 'Falta el objeto selection en la solicitud.' });
+  // ── GET /api/geocode ──────────────────────────
+  if (pathname === '/api/geocode' && req.method === 'GET') {
+    const q = (req.query?.q as string) || '';
+    if (!q) return res.status(400).json({ error: 'Parámetro "q" requerido.' });
+
+    const fetchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=1`;
+    return fetch(fetchUrl, { headers: { 'User-Agent': 'AstraNovousApp/1.0' } })
+      .then((r) => r.json())
+      .then((data: any[]) =>
+        res.status(200).json(data.map((item) => ({
+          name: item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+        })))
+      )
+      .catch((err: any) => res.status(500).json({ error: 'Geocode error.', details: err?.message }));
+  }
+
+  // ── AI / Knowledge routes: stub (no GEMINI_API_KEY = skip) ──────────
+  if (pathname.startsWith('/api/interpretations') || pathname.startsWith('/api/full-profile') || pathname.startsWith('/api/knowledge')) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: 'GEMINI_API_KEY no configurada en Vercel Environment Variables.' });
     }
-    const result = await interpretationService.analyze(payload);
-    return res.json(result);
-  } catch (err: any) {
-    console.error('Interpretation API error:', err);
-    return res.status(500).json({
-      error: 'Error al procesar la interpretación astrológica documental.',
-      details: err?.message || String(err),
-    });
-  }
-});
+    // Lazy-load AI services only when API key is available
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { interpretationService } = require('../src/server/services/interpretationService');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { fullProfileService } = require('../src/server/services/fullProfileService');
 
-// 4b. Full General Natal Profile Endpoint
-app.post('/api/full-profile', async (req, res) => {
-  try {
-    const chartData = req.body;
-    if (!chartData || !chartData.planets || !chartData.normalizedData) {
-      return res.status(400).json({ error: 'Faltan los datos del mapa natal (chartData) en la solicitud.' });
+      if (pathname === '/api/interpretations/analyze' && req.method === 'POST') {
+        return interpretationService.analyze(req.body).then((r: any) => res.status(200).json(r));
+      }
+      if (pathname === '/api/full-profile' && req.method === 'POST') {
+        return fullProfileService.generateProfile(req.body).then((r: any) => res.status(200).json(r));
+      }
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Error cargando servicios de IA.', details: err?.message });
     }
-    const profile = await fullProfileService.generateProfile(chartData);
-    return res.json(profile);
-  } catch (err: any) {
-    console.error('Full Profile API error:', err);
-    return res.status(500).json({
-      error: 'Error al generar el perfil general natal.',
-      details: err?.message || String(err),
-    });
   }
-});
 
-// 5. Knowledge Base Document Management Endpoints
-app.get('/api/knowledge/documents', (req, res) => {
-  try {
-    const docs = fileSearchService.getDocuments();
-    return res.json({
-      documents: docs,
-      storeConfigured: fileSearchService.isConfigured(),
-      fileSearchStoreId: fileSearchService.getFileSearchStoreId()
-    });
-  } catch (err: any) {
-    console.error('Error fetching knowledge docs:', err);
-    return res.status(500).json({ error: 'Error al obtener documentos.' });
-  }
-});
-
-export default app;
+  // ── Fallback ──────────────────────────────────
+  return res.status(404).json({ error: `Ruta no encontrada: ${pathname}` });
+}
