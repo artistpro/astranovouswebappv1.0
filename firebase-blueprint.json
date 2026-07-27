@@ -1,0 +1,30 @@
+{
+  "entities": {
+    "savedCharts": {
+      "title": "Saved Charts",
+      "description": "User saved natal charts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "birthTime": { "type": "string" },
+        "locationName": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "houseSystem": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "birthDate", "birthTime", "locationName", "latitude", "longitude"]
+    }
+  },
+  "securityRules": [
+    {
+      "collection": "savedCharts",
+      "read": "request.auth != null && request.auth.uid == resource.data.userId",
+      "write": "request.auth != null && request.auth.uid == request.resource.data.userId"
+    }
+  ]
+}
