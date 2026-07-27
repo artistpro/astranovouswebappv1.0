@@ -1,14 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { createRequire } from 'module';
 
-const require = createRequire(import.meta.url);
-
+// pdf-parse is loaded lazily to avoid CJS/ESM incompatibility crashes on Vercel serverless
 let pdfParseFn: any = null;
 try {
-  pdfParseFn = require('pdf-parse');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  pdfParseFn = eval('require')("pdf-parse");
 } catch (e) {
-  console.warn('[FileSearchService] Warning: pdf-parse could not be loaded via require:', e);
+  console.warn('[FileSearchService] pdf-parse not available (Vercel serverless or ESM environment):', (e as Error).message);
 }
 
 export interface DocumentMeta {
